@@ -6,7 +6,6 @@ from utils.project_utils import select_task
 
 def create_batch_entries_command(clockify, openai, default_project_id, default_task_id):
     """Create multiple time entries for different days of the week"""
-    # Get project ID first (use default if empty)
     from commands.list_projects import list_projects_command
     list_projects_command(clockify)
     
@@ -15,10 +14,8 @@ def create_batch_entries_command(clockify, openai, default_project_id, default_t
         project_id = default_project_id
         cprint(f"Using default project ID: {project_id}", "yellow")
     
-    # Get task ID (use default if empty)
     task_id = select_task(clockify, project_id, default_task_id)
     
-    # Get the start date of the week
     start_date = get_week_start_date()
     
     cprint("\nEnter work items in natural language", "cyan")
@@ -26,7 +23,7 @@ def create_batch_entries_command(clockify, openai, default_project_id, default_t
     cprint("  mon-tue: Feature implementation", "white")
     cprint("  wed: Code review", "white")
     cprint("  thursday-friday: Documentation", "white")
-    cprint("\nEnter your work items (Ctrl+D or empty line when done):", "yellow")
+    cprint("\nEnter your work items (empty line when done):", "yellow")
     
     lines = []
     while True:
@@ -43,64 +40,52 @@ def create_batch_entries_command(clockify, openai, default_project_id, default_t
         return
         
     try:
-        # Parse the schedule first
-        parsed_result = openai.parse_work_schedule('\n'.join(lines))
-        entries_data = json.loads(parsed_result)
+        # Parse and enhance the schedule in one call
+        parsed_result = openai.process_work_schedule('\n'.join(lines))
+        try:
+            entries_data = json.loads(parsed_result)
+        except json.JSONDecodeError:
+            cprint("\nError: Invalid response from AI. Raw response:", "red")
+            cprint(parsed_result, "yellow")
+            return
         
-        # Convert to our internal format and enhance descriptions in one go
+        # Process each day
         planned_entries = []
         for day_num in range(5):  # Monday to Friday
             current_date = start_date + timedelta(days=day_num)
             
-            # Find description for this day
-            description = None
+            # Find entry for this day
+            entry_for_day = None
             for entry in entries_data:
-                if day_num in entry['days']:
-                    description = entry['description']
+                if day_num in entry.get('days', []):
+                    entry_for_day = entry
                     break
             
-            if description:
-                # Check if entry already exists
+            if entry_for_day:
                 if clockify.has_entry_for_date_project(project_id, current_date):
                     cprint(f"\n{current_date.strftime('%A, %Y-%m-%d')}:", "red")
                     cprint("Entry already exists for this date", "red")
                     continue
                 
-                # Get AI enhancement for all descriptions at once
-                try:
-                    enhanced_result = openai.enhance_work_description(description)
-                    enhanced_data = json.loads(enhanced_result)
-                    enhanced_description = enhanced_data['enhanced_description']
-                    
-                    planned_entries.append({
-                        'date': current_date,
-                        'description': enhanced_description,
-                        'original': description
-                    })
-                    
-                    cprint(f"\n{current_date.strftime('%A, %Y-%m-%d')}:", "cyan")
-                    cprint(f"Original: {description}", "white")
-                    cprint(f"Enhanced: {enhanced_description}", "green")
-                except json.JSONDecodeError:
-                    cprint(f"\nError processing AI enhancement for {current_date.strftime('%A')}", "red")
-                    cprint(f"Will use original: {description}", "yellow")
-                    planned_entries.append({
-                        'date': current_date,
-                        'description': description,
-                        'original': description
-                    })
+                planned_entries.append({
+                    'date': current_date,
+                    'description': entry_for_day['enhanced'],
+                    'original': entry_for_day['original']
+                })
+                
+                cprint(f"\n{current_date.strftime('%A, %Y-%m-%d')}:", "cyan")
+                cprint(f"Original: {entry_for_day['original']}", "white")
+                cprint(f"Enhanced: {entry_for_day['enhanced']}", "green")
         
         if not planned_entries:
             cprint("\nNo entries to create (all dates may already have entries).", "yellow")
             return
         
-        # Confirm creation
         confirm = input("\nCreate these entries? (y/n): ").lower()
         if confirm != 'y':
             cprint("\nOperation cancelled.", "yellow")
             return
         
-        # Create entries
         created_count = 0
         for entry in planned_entries:
             result = clockify.create_workday_entry(
@@ -120,4 +105,5 @@ def create_batch_entries_command(clockify, openai, default_project_id, default_t
         
     except Exception as e:
         cprint(f"\nError processing input: {str(e)}", "red")
+        cprint("Please try again with simpler input format.", "yellow")
         return 

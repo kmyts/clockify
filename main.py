@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from api.clockify_api import ClockifyAPI
 from api.openai_api import OpenAIAPI
 from commands.time_tracking_commands import TimeTrackingCommands
-
+from termcolor import cprint
 # Load environment variables
 load_dotenv()
 
@@ -21,6 +21,7 @@ def main():
         print("2. Create Single Time Entry")
         print("3. Create Weekly Time Entries")
         print("4. Create Batch Time Entries")
+        cprint("4. Create Batch Time Entries", "yellow")
         print("5. View Weekly Time Entries")
         print("6. Delete Weekly Time Entries")
         print("7. Exit")

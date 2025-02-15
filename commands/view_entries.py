@@ -4,7 +4,6 @@ from utils.date_utils import get_week_start_date
 
 def view_weekly_entries_command(clockify):
     """View time entries for a specific week"""
-    # Get the start date of the week using the utility function
     start_date = get_week_start_date()
     
     end_date = start_date + timedelta(days=6)
