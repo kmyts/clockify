@@ -19,12 +19,10 @@ def main():
         print("\n=== Time Tracking Menu ===")
         print("1. List Projects")
         print("2. Create Single Time Entry")
-        print("3. Create Weekly Time Entries")
-        print("4. Create Batch Time Entries")
-        cprint("4. Create Batch Time Entries", "yellow")
-        print("5. View Weekly Time Entries")
-        print("6. Delete Weekly Time Entries")
-        print("7. Exit")
+        cprint("3. Create Batch Time Entries", "yellow")
+        print("4. View Weekly Time Entries")
+        print("5. Delete Weekly Time Entries")
+        print("6. Exit")
         
         choice = input("\nEnter your choice (1-7): ")
         
@@ -33,14 +31,12 @@ def main():
         elif choice == "2":
             commands.create_time_entry_with_ai()
         elif choice == "3":
-            commands.create_weekly_entries()
-        elif choice == "4":
             commands.create_batch_entries()
-        elif choice == "5":
+        elif choice == "4":
             commands.view_weekly_entries()
-        elif choice == "6":
+        elif choice == "5":
             commands.delete_weekly_entries()
-        elif choice == "7":
+        elif choice == "6":
             print("Goodbye!")
             break
         else:
